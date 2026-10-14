@@ -3,16 +3,14 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.core.config import settings
-from app.schemas.common import HealthCheckResponse
+from app.schemas import HealthCheckResponse
 
-router = APIRouter()
+router = APIRouter(tags=["Health"])
 
 
-@router.get("/health", response_model=HealthCheckResponse, tags=["Health"])
+@router.get("/health", response_model=HealthCheckResponse)
 def health_check(db: Session = Depends(get_db)) -> HealthCheckResponse:
-    """
-    Check the health of the API backend and database connection (FR-19).
-    """
+    """Check API backend status and live database connectivity (FR-19)."""
     db_status = "connected"
     try:
         db.execute(text("SELECT 1"))

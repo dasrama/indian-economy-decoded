@@ -10,6 +10,7 @@ from sqlalchemy.pool import StaticPool
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
 from app.core.database import Base, get_db
+import app.models  # Ensure all model tables are registered on Base.metadata
 from app.main import app
 
 # Create in-memory SQLite engine for tests
@@ -44,3 +45,4 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+

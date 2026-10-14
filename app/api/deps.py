@@ -1,7 +1,7 @@
 from fastapi import Depends, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.schemas.common import PaginationParams
+from app.schemas import PaginationParams
 
 
 def get_pagination(

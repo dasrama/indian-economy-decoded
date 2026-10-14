@@ -5,9 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.core.database import SessionLocal
-from app.models.category import IndicatorCategory
-from app.models.data_source import DataSource
-from app.models.indicator import Indicator
+from app.models import DataSource, Indicator, IndicatorCategory
 
 
 def seed():
@@ -143,3 +141,4 @@ def seed():
 
 if __name__ == "__main__":
     seed()
+

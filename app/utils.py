@@ -1,7 +1,28 @@
+import hashlib
 from datetime import date, datetime
-from typing import Optional, Union
+from pathlib import Path
+from typing import Union
 import dateutil.parser
 
+
+# --- Hashing Utilities (FR-5, FR-6) ---
+
+def calculate_file_hash(file_path: Union[str, Path]) -> str:
+    """Calculate the SHA-256 hash of a file on disk."""
+    hasher = hashlib.sha256()
+    path = Path(file_path)
+    with path.open("rb") as f:
+        while chunk := f.read(65536):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def calculate_bytes_hash(data: bytes) -> str:
+    """Calculate the SHA-256 hash of raw bytes."""
+    return hashlib.sha256(data).hexdigest()
+
+
+# --- Date Utilities (FR-9, FR-11) ---
 
 def parse_flexible_date(date_input: Union[str, date, datetime]) -> date:
     """
@@ -9,7 +30,6 @@ def parse_flexible_date(date_input: Union[str, date, datetime]) -> date:
     - '2026-09-01'
     - 'September 2026' or 'Sep-26' or 'Sep-2026'
     - '01-09-2026' or '01/09/2026'
-    - '2026-Q2'
     """
     if isinstance(date_input, date) and not isinstance(date_input, datetime):
         return date_input

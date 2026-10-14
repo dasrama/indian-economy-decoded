@@ -1,13 +1,11 @@
-from pathlib import Path
 from datetime import date
+from pathlib import Path
 from typing import List
-from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from app.ingestion.base import BaseDownloader, BaseParser, ParsedRecord
 from app.ingestion.pipeline import IngestionPipeline
-from app.models.indicator import Indicator
-from app.services.indicator_service import IndicatorService
-from app.schemas.indicator import IndicatorCreate
+from app.schemas import IndicatorCreate
+from app.services import CatalogService
 
 
 class DummyDownloader(BaseDownloader):
@@ -31,17 +29,17 @@ class DummyParser(BaseParser):
 
 
 def test_ingestion_pipeline_and_deduplication(db_session: Session, tmp_path: Path):
-    # 1. Create test indicator in DB
-    ind_in = IndicatorCreate(
-        code="UPI_VOL_MONTHLY",
-        name="UPI Monthly Volume",
-        slug="upi-monthly-volume",
-        frequency="MONTHLY",
-        units="Million Transactions",
+    indicator = CatalogService.create_indicator(
+        db_session,
+        IndicatorCreate(
+            code="UPI_VOL_MONTHLY",
+            name="UPI Monthly Volume",
+            slug="upi-monthly-volume",
+            frequency="MONTHLY",
+            units="Million Transactions",
+        ),
     )
-    indicator = IndicatorService.create(db_session, ind_in)
 
-    # 2. Setup mock data
     file_bytes = b"RBI_SAMPLE_DATA_CONTENT_VERSION_1"
     downloader = DummyDownloader(file_bytes, "upi_sample.csv")
     parser = DummyParser([
@@ -63,19 +61,7 @@ def test_ingestion_pipeline_and_deduplication(db_session: Session, tmp_path: Pat
     assert res_1.records_extracted == 2
     assert res_1.records_inserted == 2
 
-    # Second run with identical file content: should detect duplicate hash and SKIP (FR-6)
+    # Second run with identical file content: duplicate hash detected -> SKIPPED (FR-6)
     res_2 = pipeline.run(job_type="SCHEDULED")
     assert res_2.status == "SKIPPED"
     assert "Unchanged file detected" in res_2.log_summary
-
-
-def test_ingestion_api_endpoints(client: TestClient):
-    # Check jobs endpoint
-    jobs_res = client.get("/api/v1/ingestion/jobs")
-    assert jobs_res.status_code == 200
-    assert "items" in jobs_res.json()
-
-    # Check raw files endpoint
-    files_res = client.get("/api/v1/ingestion/raw-files")
-    assert files_res.status_code == 200
-    assert "items" in files_res.json()

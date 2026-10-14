@@ -29,3 +29,4 @@ class BaseParser(ABC):
     def parse(self, file_path: Path) -> List[ParsedRecord]:
         """Parse raw file and return list of standardized observation records."""
         pass
+

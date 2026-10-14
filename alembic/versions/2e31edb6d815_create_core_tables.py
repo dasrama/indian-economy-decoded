@@ -128,7 +128,7 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f('ix_ingestion_jobs_status'), ['status'], unique=False)
 
     op.create_table('observations',
-    sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
+    sa.Column('id', sa.BigInteger().with_variant(sa.Integer(), 'sqlite'), autoincrement=True, nullable=False),
     sa.Column('indicator_id', sa.Integer(), nullable=False),
     sa.Column('raw_file_id', sa.Integer(), nullable=True),
     sa.Column('observation_date', sa.Date(), nullable=False),
@@ -157,7 +157,7 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f('ix_observations_raw_file_id'), ['raw_file_id'], unique=False)
 
     op.create_table('data_revisions',
-    sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
+    sa.Column('id', sa.BigInteger().with_variant(sa.Integer(), 'sqlite'), autoincrement=True, nullable=False),
     sa.Column('indicator_id', sa.Integer(), nullable=False),
     sa.Column('observation_id', sa.BigInteger(), nullable=True),
     sa.Column('raw_file_id', sa.Integer(), nullable=True),
