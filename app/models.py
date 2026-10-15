@@ -209,9 +209,6 @@ class Observation(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(20), default="ACTIVE", nullable=False)
 
     yoy_change: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    mom_change: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    moving_avg_3m: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    moving_avg_12m: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     metadata_json: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
 
     indicator: Mapped["Indicator"] = relationship("Indicator", back_populates="observations")

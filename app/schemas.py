@@ -179,28 +179,11 @@ class ObservationBase(BaseModel):
     revision_number: int = 0
     status: str = "ACTIVE"
     yoy_change: Optional[float] = None
-    mom_change: Optional[float] = None
-    moving_avg_3m: Optional[float] = None
-    moving_avg_12m: Optional[float] = None
     metadata_json: Optional[Dict[str, Any]] = None
 
 
 class ObservationCreate(ObservationBase):
     pass
-
-
-class ObservationUpdate(BaseModel):
-    value: Optional[float] = None
-    units: Optional[str] = None
-    is_provisional: Optional[bool] = None
-    is_revised: Optional[bool] = None
-    revision_number: Optional[int] = None
-    status: Optional[str] = None
-    yoy_change: Optional[float] = None
-    mom_change: Optional[float] = None
-    moving_avg_3m: Optional[float] = None
-    moving_avg_12m: Optional[float] = None
-    metadata_json: Optional[Dict[str, Any]] = None
 
 
 class ObservationResponse(ObservationBase):
@@ -215,9 +198,6 @@ class TimeSeriesPoint(BaseModel):
     date: date
     value: float
     yoy_change: Optional[float] = None
-    mom_change: Optional[float] = None
-    moving_avg_3m: Optional[float] = None
-    moving_avg_12m: Optional[float] = None
     is_provisional: bool = False
     is_revised: bool = False
 

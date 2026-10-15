@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"
 
+    # Selenium Automation Settings (FR-2)
+    SELENIUM_HEADLESS: bool = False
+    SELENIUM_TIMEOUT: int = 30
+    CHROME_BINARY_PATH: str = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    RBI_STATISTICS_URL: str = "https://www.rbi.org.in/scripts/statistics.aspx"
+
     @property
     def is_sqlite(self) -> bool:
         return self.DATABASE_URL.startswith("sqlite")

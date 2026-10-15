@@ -327,9 +327,6 @@ class ObservationService:
                 date=obs.observation_date,
                 value=obs.value,
                 yoy_change=obs.yoy_change,
-                mom_change=obs.mom_change,
-                moving_avg_3m=obs.moving_avg_3m,
-                moving_avg_12m=obs.moving_avg_12m,
                 is_provisional=obs.is_provisional,
                 is_revised=obs.is_revised,
             )

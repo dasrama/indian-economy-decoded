@@ -1,7 +1,8 @@
-from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from typing import Any, Dict, Optional
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_pagination
+from app.ingestion.selenium_scraper import RbiStatisticsScraper
 from app.schemas import IngestionJobResponse, PaginatedResponse, PaginationParams, RawFileResponse
 from app.services import IngestionService
 
@@ -33,3 +34,23 @@ def list_raw_files(
         db, indicator_id=indicator_id, skip=pagination.offset, limit=pagination.page_size
     )
     return PaginatedResponse.create(items, total, pagination)
+
+
+@router.post("/trigger-selenium", status_code=status.HTTP_200_OK)
+def trigger_selenium_statistics(
+    indicator: str = Query("all", pattern="^(all|cpi|forex|payments)$", description="Target indicator to collect"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Trigger Selenium automation to collect official statistical data from RBI Statistics
+    and store raw and processed files into the data/ directory (FR-2, FR-4).
+    """
+    scraper = RbiStatisticsScraper()
+    if indicator == "cpi":
+        return scraper.collect_cpi_inflation(db)
+    elif indicator == "forex":
+        return scraper.collect_forex_reference_rates(db)
+    elif indicator == "payments":
+        return scraper.collect_payment_systems(db)
+    else:
+        return scraper.collect_all(db)

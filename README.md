@@ -92,7 +92,26 @@ uvicorn app.main:app --reload --port 8000
 ```
 API Documentation: **[http://localhost:8000/docs](http://localhost:8000/docs)**.
 
-### 6. Run Test Suite
+### 6. Run Selenium Statistics Collector
+Collect real data from the official RBI Statistics section using headless Selenium:
+```bash
+# Scrape all statistics modules (CPI, Forex, Payments):
+python scripts/run_selenium_statistics.py --indicator all
+
+# Or scrape a specific indicator:
+python scripts/run_selenium_statistics.py --indicator cpi
+python scripts/run_selenium_statistics.py --indicator forex
+python scripts/run_selenium_statistics.py --indicator payments
+```
+
+Raw files are saved in `data/raw/{indicator_slug}/{yyyy-mm-dd}/` and cleaned series in `data/processed/{indicator_slug}/`.
+
+You can also trigger it via the REST API:
+```bash
+curl -X POST "http://localhost:8000/api/v1/ingestion/trigger-selenium?indicator=all"
+```
+
+### 7. Run Test Suite
 ```bash
 pytest -v
 ```
