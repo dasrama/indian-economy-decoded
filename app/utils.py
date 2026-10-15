@@ -17,11 +17,6 @@ def calculate_file_hash(file_path: Union[str, Path]) -> str:
     return hasher.hexdigest()
 
 
-def calculate_bytes_hash(data: bytes) -> str:
-    """Calculate the SHA-256 hash of raw bytes."""
-    return hashlib.sha256(data).hexdigest()
-
-
 # --- Date Utilities (FR-9, FR-11) ---
 
 def parse_flexible_date(date_input: Union[str, date, datetime]) -> date:
