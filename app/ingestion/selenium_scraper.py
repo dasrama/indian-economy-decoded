@@ -3,7 +3,7 @@ import io
 import re
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Iterable
 import httpx
 import openpyxl
 from selenium.webdriver.common.by import By
@@ -15,7 +15,7 @@ from app.ingestion.selenium_driver import create_chrome_driver
 from app.models import Indicator
 from app.schemas import IngestionJobCreate, ObservationCreate, RawFileCreate
 from app.services import CatalogService, IngestionService, ObservationService
-from app.utils import calculate_bytes_hash, calculate_file_hash, parse_flexible_date
+from app.utils import calculate_file_hash, parse_flexible_date
 
 
 class RbiStatisticsScraper:
@@ -37,9 +37,27 @@ class RbiStatisticsScraper:
         self.raw_base_dir = Path(raw_data_dir or settings.RAW_DATA_DIR)
         self.processed_base_dir = Path(processed_data_dir or settings.PROCESSED_DATA_DIR)
 
-    # -----------------------------------------------------------------------
-    # 1. CPI Inflation Statistics (FR-1, FR-2, FR-4, FR-8)
-    # -----------------------------------------------------------------------
+
+    def prepare_directories(self, indicator_slug: str, today: str) -> tuple[Path, Path]:
+        raw_dir = self.raw_base_dir / indicator_slug / today
+        processed_dir = self.processed_base_dir / indicator_slug
+
+        raw_dir.mkdir(parents=True, exist_ok=True)
+        processed_dir.mkdir(parents=True, exist_ok=True)
+
+        return raw_dir, processed_dir
+
+
+    @staticmethod
+    def write_csv(path: Path, fieldnames: list[str], rows: Iterable[Dict[str, Any]]) -> None:
+        """Write CSV records consistently with a header."""
+        with path.open("w", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=fieldnames, extrasaction="raise",)
+            writer.writeheader()
+            writer.writerows(rows)
+
+    
+    # 1. CPI Inflation Statistics
 
     def collect_cpi_inflation(self, db: Optional[Session] = None) -> Dict[str, Any]:
         """
@@ -47,19 +65,17 @@ class RbiStatisticsScraper:
         publication, downloads the official XLSX file into data/raw/cpi-combined-general/,
         and extracts CPI observations.
         """
-        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         indicator_slug = "cpi-combined-general"
-        target_raw_dir = self.raw_base_dir / indicator_slug / today_str
-        target_raw_dir.mkdir(parents=True, exist_ok=True)
-        target_proc_dir = self.processed_base_dir / indicator_slug
-        target_proc_dir.mkdir(parents=True, exist_ok=True)
+    
+        raw_dir, processed_dir = self.prepare_directories(indicator_slug, today)
 
-        logger.info(f"Starting Selenium collection for CPI Inflation into {target_raw_dir}")
+        logger.info(f"Starting Selenium collection for CPI Inflation into {raw_dir}")
         xlsx_url = None
         page_title = ""
 
         try:
-            with create_chrome_driver(download_dir=target_raw_dir) as driver:
+            with create_chrome_driver(download_dir=raw_dir) as driver:
                 driver.get(self.BULLETIN_URL)
                 page_title = driver.title
 
@@ -90,13 +106,13 @@ class RbiStatisticsScraper:
                         logger.info(f"Located official CPI XLSX download URL: {xlsx_url}")
 
             # If Selenium identified the URL, download directly to ensure complete file integrity
-            raw_file_path = target_raw_dir / f"cpi_combined_{today_str}.xlsx"
+            raw_file_path = raw_dir / f"cpi_combined_{today}.xlsx"
             if xlsx_url:
                 resp = httpx.get(xlsx_url, timeout=30.0, verify=False, follow_redirects=True)
                 raw_file_path.write_bytes(resp.content)
             else:
                 # Check if downloaded via browser
-                downloaded = list(target_raw_dir.glob("*.xlsx")) + list(target_raw_dir.glob("*.xls"))
+                downloaded = list(raw_dir.glob("*.xlsx")) + list(raw_dir.glob("*.xls"))
                 if downloaded:
                     raw_file_path = downloaded[0]
                 else:
@@ -111,12 +127,18 @@ class RbiStatisticsScraper:
             logger.info(f"Extracted {len(parsed_records)} CPI observation records")
 
             # Save processed CSV in data/processed/cpi-combined-general/
-            processed_csv_path = target_proc_dir / "cpi_series.csv"
-            with processed_csv_path.open("w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=["date", "value", "yoy_change", "is_provisional"])
-                writer.writeheader()
-                for r in parsed_records:
-                    writer.writerow(r)
+            processed_csv_path = processed_dir / "cpi_series.csv"
+
+            self.write_csv(
+                path=processed_csv_path,
+                fieldnames=[
+                    "date",
+                    "value",
+                    "yoy_change",
+                    "is_provisional",
+                ],
+                rows=parsed_records
+            )
 
             # Ingest into Database if session provided
             db_stats = {"inserted": 0, "revised": 0, "skipped": 0}
@@ -212,9 +234,8 @@ class RbiStatisticsScraper:
                     })
         return records
 
-    # -----------------------------------------------------------------------
-    # 2. Forex Reference Rates Statistics (FR-1, FR-2, FR-4)
-    # -----------------------------------------------------------------------
+
+    # 2. Forex Reference Rates Statistics 
 
     def collect_forex_reference_rates(self, db: Optional[Session] = None) -> Dict[str, Any]:
         """
@@ -222,14 +243,12 @@ class RbiStatisticsScraper:
         extracts the dynamic ASP.NET table rates for USD, EUR, GBP, JPY,
         and saves raw data into data/raw/usd-inr-reference-rate/.
         """
-        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         indicator_slug = "usd-inr-reference-rate"
-        target_raw_dir = self.raw_base_dir / indicator_slug / today_str
-        target_raw_dir.mkdir(parents=True, exist_ok=True)
-        target_proc_dir = self.processed_base_dir / indicator_slug
-        target_proc_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Starting Selenium collection for Forex Reference Rates into {target_raw_dir}")
+        raw_dir, processed_dir = self.prepare_directories(indicator_slug, today)
+
+        logger.info(f"Starting Selenium collection for Forex Reference Rates into {raw_dir}")
 
         try:
             rates_data = []
@@ -267,27 +286,35 @@ class RbiStatisticsScraper:
                                     pass
 
             # Save raw HTML
-            raw_html_path = target_raw_dir / f"reference_rates_{today_str}.html"
+            raw_html_path = raw_dir / f"reference_rates_{today}.html"
             raw_html_path.write_text(raw_html, encoding="utf-8")
 
             # Save raw extracted CSV
-            raw_csv_path = target_raw_dir / f"reference_rates_{today_str}.csv"
-            with raw_csv_path.open("w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=["currency", "date", "rate"])
-                writer.writeheader()
-                for r in rates_data:
-                    writer.writerow(r)
+            raw_csv_path = raw_dir / f"reference_rates_{today}.csv"
+
+            self.write_csv(
+                path=raw_csv_path,
+                fieldnames=["currency", "date", "rate"],
+                rows=rates_data
+            )
 
             file_hash = calculate_file_hash(raw_csv_path)
 
             # Save processed CSV for USD/INR
             usd_rates = [r for r in rates_data if r["currency"] == "USD"]
-            proc_csv_path = target_proc_dir / "usd_inr_series.csv"
-            with proc_csv_path.open("w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=["date", "value"])
-                writer.writeheader()
-                for r in usd_rates:
-                    writer.writerow({"date": r["date"], "value": r["rate"]})
+
+            processed_csv_path = processed_dir / "usd_inr_series.csv"
+            self.write_csv(
+                path=processed_csv_path,
+                fieldnames=["date", "value"],
+                rows=[
+                    {
+                        "date": record["date"],
+                        "value": record["rate"],
+                    }
+                    for record in usd_rates
+                ]
+            )
 
             db_stats = {"inserted": 0, "revised": 0, "skipped": 0}
             if db and usd_rates:
@@ -329,7 +356,7 @@ class RbiStatisticsScraper:
                 "status": "SUCCESS",
                 "indicator": "USD_INR_REF_RATE",
                 "raw_file": str(raw_csv_path),
-                "processed_file": str(proc_csv_path),
+                "processed_file": str(processed_csv_path),
                 "file_hash": file_hash,
                 "rates_found": rates_data,
                 "db_stats": db_stats,
@@ -339,28 +366,25 @@ class RbiStatisticsScraper:
             logger.exception(f"Error during Reference Rate collection: {exc}")
             return {"status": "FAILED", "indicator": "USD_INR_REF_RATE", "error": str(exc)}
 
-    # -----------------------------------------------------------------------
-    # 3. Payment Systems Statistics (FR-1, FR-2, FR-4)
-    # -----------------------------------------------------------------------
+    # 3. Payment Systems Statistics 
 
     def collect_payment_systems(self, db: Optional[Session] = None) -> Dict[str, Any]:
         """
         Navigates to RBI Statistics, downloads payment systems settlement data,
         stores raw file in data/raw/upi-monthly-volume/, and parses transaction figures.
         """
-        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         indicator_slug = "upi-monthly-volume"
-        target_raw_dir = self.raw_base_dir / indicator_slug / today_str
-        target_raw_dir.mkdir(parents=True, exist_ok=True)
-        target_proc_dir = self.processed_base_dir / indicator_slug
-        target_proc_dir.mkdir(parents=True, exist_ok=True)
+    
+        raw_dir, processed_dir = self.prepare_directories(indicator_slug, today)
 
-        logger.info(f"Starting Selenium collection for Payment Systems Data into {target_raw_dir}")
+
+        logger.info(f"Starting Selenium collection for Payment Systems Data into {raw_dir}")
 
         try:
             # Download settlement data publication
             resp = httpx.get(self.PAYMENT_DATA_URL, timeout=30.0, verify=False, follow_redirects=True)
-            raw_file_path = target_raw_dir / f"payment_settlement_{today_str}.xlsx"
+            raw_file_path = raw_dir / f"payment_settlement_{today}.xlsx"
             raw_file_path.write_bytes(resp.content)
 
             file_hash = calculate_file_hash(raw_file_path)
@@ -387,14 +411,18 @@ class RbiStatisticsScraper:
                         continue
 
             # Save processed series
-            proc_csv_path = target_proc_dir / "payment_systems_series.csv"
-            with proc_csv_path.open("w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(
-                    f, fieldnames=["date", "rtgs_volume_lakhs", "neft_volume_lakhs", "total_volume_lakhs"]
-                )
-                writer.writeheader()
-                for r in records:
-                    writer.writerow(r)
+            processed_csv_path = (processed_dir / "payment_systems_series.csv")
+
+            self.write_csv(
+                path=processed_csv_path,
+                fieldnames=[
+                    "date",
+                    "rtgs_volume_lakhs",
+                    "neft_volume_lakhs",
+                    "total_volume_lakhs",
+                ],
+                rows=records,
+            )
 
             db_stats = {"inserted": 0, "revised": 0, "skipped": 0}
             if db and records:
@@ -437,7 +465,7 @@ class RbiStatisticsScraper:
                 "status": "SUCCESS",
                 "indicator": "UPI_MONTHLY_VOLUME",
                 "raw_file": str(raw_file_path),
-                "processed_file": str(proc_csv_path),
+                "processed_file": str(processed_csv_path),
                 "file_hash": file_hash,
                 "records_extracted": len(records),
                 "db_stats": db_stats,
@@ -447,52 +475,51 @@ class RbiStatisticsScraper:
             logger.exception(f"Error during payment systems collection: {exc}")
             return {"status": "FAILED", "indicator": "UPI_MONTHLY_VOLUME", "error": str(exc)}
 
-    # -----------------------------------------------------------------------
+
     # Orchestrator (FR-3, FR-7)
-    # -----------------------------------------------------------------------
 
-    def collect_all(self, db: Optional[Session] = None) -> Dict[str, Any]:
-        """Run complete Selenium collection for all RBI Statistics modules."""
-        logger.info("Triggering comprehensive RBI Statistics collection via Selenium")
-        job = None
-        if db:
-            job = IngestionService.create_job(
-                db,
-                IngestionJobCreate(
-                    job_type="SELENIUM_STATISTICS",
-                    status="RUNNING",
-                    log_summary="Collecting data through RBI Statistics using Selenium automation",
-                ),
-            )
+    # def collect_all(self, db: Optional[Session] = None) -> Dict[str, Any]:
+    #     """Run complete Selenium collection for all RBI Statistics modules."""
+    #     logger.info("Triggering comprehensive RBI Statistics collection via Selenium")
+    #     job = None
+    #     if db:
+    #         job = IngestionService.create_job(
+    #             db,
+    #             IngestionJobCreate(
+    #                 job_type="SELENIUM_STATISTICS",
+    #                 status="RUNNING",
+    #                 log_summary="Collecting data through RBI Statistics using Selenium automation",
+    #             ),
+    #         )
 
-        results = {
-            "cpi": self.collect_cpi_inflation(db),
-            "forex": self.collect_forex_reference_rates(db),
-            "payments": self.collect_payment_systems(db),
-        }
+    #     results = {
+    #         "cpi": self.collect_cpi_inflation(db),
+    #         "forex": self.collect_forex_reference_rates(db),
+    #         "payments": self.collect_payment_systems(db),
+    #     }
 
-        success = all(r.get("status") == "SUCCESS" for r in results.values())
-        summary_status = "COMPLETED" if success else "PARTIAL"
+    #     success = all(r.get("status") == "SUCCESS" for r in results.values())
+    #     summary_status = "COMPLETED" if success else "PARTIAL"
 
-        if db and job:
-            total_extracted = sum(r.get("records_extracted", 0) for r in results.values())
-            total_inserted = sum(r.get("db_stats", {}).get("inserted", 0) for r in results.values())
-            total_updated = sum(r.get("db_stats", {}).get("revised", 0) for r in results.values())
-            total_skipped = sum(r.get("db_stats", {}).get("skipped", 0) for r in results.values())
+    #     if db and job:
+    #         total_extracted = sum(r.get("records_extracted", 0) for r in results.values())
+    #         total_inserted = sum(r.get("db_stats", {}).get("inserted", 0) for r in results.values())
+    #         total_updated = sum(r.get("db_stats", {}).get("revised", 0) for r in results.values())
+    #         total_skipped = sum(r.get("db_stats", {}).get("skipped", 0) for r in results.values())
 
-            IngestionService.finish_job(
-                db,
-                job_id=job.id,
-                status=summary_status,
-                records_extracted=total_extracted,
-                records_inserted=total_inserted,
-                records_updated=total_updated,
-                records_skipped=total_skipped,
-                log_summary=f"Selenium statistics collection: {summary_status}",
-            )
+    #         IngestionService.finish_job(
+    #             db,
+    #             job_id=job.id,
+    #             status=summary_status,
+    #             records_extracted=total_extracted,
+    #             records_inserted=total_inserted,
+    #             records_updated=total_updated,
+    #             records_skipped=total_skipped,
+    #             log_summary=f"Selenium statistics collection: {summary_status}",
+    #         )
 
-        return {
-            "status": summary_status,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "results": results,
-        }
+    #     return {
+    #         "status": summary_status,
+    #         "timestamp": datetime.now(timezone.utc).isoformat(),
+    #         "results": results,
+    #     }
