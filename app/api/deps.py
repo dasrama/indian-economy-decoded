@@ -1,6 +1,6 @@
 from fastapi import Depends, Query
 from sqlalchemy.orm import Session
-from app.core.database import get_db
+from app.config.database import get_db
 from app.schemas import PaginationParams
 
 

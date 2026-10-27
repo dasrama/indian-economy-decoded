@@ -19,7 +19,7 @@ rbi-india-explained/
 │   │       ├── observations.py   # Observations, Series (FR-16), Revisions (FR-13)
 │   │       ├── ingestion.py      # Ingestion Jobs & Raw Files (FR-5, FR-7)
 │   │       └── router.py         # Consolidated API router
-│   ├── core/
+│   ├── config/
 │   │   ├── config.py             # Dual-engine settings (SQLite & PostgreSQL)
 │   │   ├── database.py           # Engine & SessionLocal setup
 │   │   └── logging.py            # Structured console logging

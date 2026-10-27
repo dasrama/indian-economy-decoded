@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from app.core.logging import logger
+from app.config.logging import logger
 from app.ingestion.base import BaseDownloader, BaseParser, ParsedRecord
 from app.models import Indicator
 from app.schemas import IngestionJobCreate, ObservationCreate, RawFileCreate

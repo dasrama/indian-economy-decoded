@@ -9,8 +9,8 @@ import openpyxl
 from selenium.webdriver.common.by import By
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
-from app.core.logging import logger
+from app.config.config import settings
+from app.config.logging import logger
 from app.ingestion.selenium_driver import create_chrome_driver
 from app.models import Indicator
 from app.schemas import IngestionJobCreate, ObservationCreate, RawFileCreate

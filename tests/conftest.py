@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 # Set test environment
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
-from app.core.database import Base, get_db
+from app.config.database import Base, get_db
 import app.models  # Ensure all model tables are registered on Base.metadata
 from app.main import app
 

@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
-from app.core.config import settings
-from app.core.logging import logger
+from app.config.config import settings
+from app.config.logging import logger
 
 connect_args = {}
 engine_kwargs = {"echo": False}

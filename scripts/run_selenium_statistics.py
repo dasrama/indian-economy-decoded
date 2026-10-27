@@ -1,10 +1,10 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import argparse
-from app.core.database import SessionLocal
+from app.config.database import SessionLocal
 from app.ingestion.selenium_scraper import RbiStatisticsScraper
 
 def main():
@@ -27,7 +27,7 @@ def main():
     db = None if args.no_db else SessionLocal()
     scraper = RbiStatisticsScraper()
 
-    print(f"\n🚀 Running Selenium Statistics Collection (Target: {args.indicator.upper()})...\n")
+    print(f"\nRunning Selenium Statistics Collection (Target: {args.indicator.upper()})...\n")
 
     try:
         if args.indicator == "cpi":
@@ -39,16 +39,16 @@ def main():
         elif args.indicator == "payments":
             res = scraper.collect_payment_systems(db)
             print(f"Payment Systems Result: {res}")
-        else:
-            res = scraper.collect_all(db)
-            print("\n📊 Aggregated Collection Results:")
-            for module, details in res.get("results", {}).items():
-                print(f"  • {module.upper()}: status={details.get('status')}")
-                if "raw_file" in details:
-                    print(f"    Raw file: {details['raw_file']}")
-                if "processed_file" in details:
-                    print(f"    Processed file: {details['processed_file']}")
-            print(f"\nOverall Status: {res.get('status')}")
+        # else:
+        #     res = scraper.collect_all(db)
+        #     print("\n Aggregated Collection Results:")
+        #     for module, details in res.get("results", {}).items():
+        #         print(f"  • {module.upper()}: status={details.get('status')}")
+        #         if "raw_file" in details:
+        #             print(f"    Raw file: {details['raw_file']}")
+        #         if "processed_file" in details:
+        #             print(f"    Processed file: {details['processed_file']}")
+        #     print(f"\nOverall Status: {res.get('status')}")
 
     finally:
         if db:

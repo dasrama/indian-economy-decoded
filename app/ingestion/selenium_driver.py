@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Generator, Optional
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from app.core.config import settings
-from app.core.logging import logger
+from app.config.config import settings
+from app.config.logging import logger
 
 
 def find_chrome_binary() -> Optional[str]:

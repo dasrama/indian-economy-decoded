@@ -7,7 +7,7 @@ from alembic import context
 # Ensure workspace root is in sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.core.config import settings
+from app.config.config import settings
 from app.models import Base
 
 # Alembic Config object
