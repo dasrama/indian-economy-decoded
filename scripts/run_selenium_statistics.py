@@ -39,16 +39,16 @@ def main():
         elif args.indicator == "payments":
             res = scraper.collect_payment_systems(db)
             print(f"Payment Systems Result: {res}")
-        # else:
-        #     res = scraper.collect_all(db)
-        #     print("\n Aggregated Collection Results:")
-        #     for module, details in res.get("results", {}).items():
-        #         print(f"  • {module.upper()}: status={details.get('status')}")
-        #         if "raw_file" in details:
-        #             print(f"    Raw file: {details['raw_file']}")
-        #         if "processed_file" in details:
-        #             print(f"    Processed file: {details['processed_file']}")
-        #     print(f"\nOverall Status: {res.get('status')}")
+        else:
+            res = scraper.collect_all(db)
+            print("\n Aggregated Collection Results:")
+            for module, details in res.get("results", {}).items():
+                print(f"  • {module.upper()}: status={details.get('status')}")
+                if "raw_file" in details:
+                    print(f"    Raw file: {details['raw_file']}")
+                if "processed_file" in details:
+                    print(f"    Processed file: {details['processed_file']}")
+            print(f"\nOverall Status: {res.get('status')}")
 
     finally:
         if db:

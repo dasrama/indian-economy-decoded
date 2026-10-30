@@ -52,5 +52,5 @@ def trigger_selenium_statistics(
         return scraper.collect_forex_reference_rates(db)
     elif indicator == "payments":
         return scraper.collect_payment_systems(db)
-    # else:
-    #     return scraper.collect_all(db)
+    else:
+        return scraper.collect_all(db)

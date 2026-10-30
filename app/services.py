@@ -370,9 +370,6 @@ class ObservationService:
                 revision_number=0,
                 status="ACTIVE",
                 yoy_change=obj_in.yoy_change,
-                mom_change=obj_in.mom_change,
-                moving_avg_3m=obj_in.moving_avg_3m,
-                moving_avg_12m=obj_in.moving_avg_12m,
                 metadata_json=obj_in.metadata_json,
             )
             db.add(new_obs)
@@ -405,6 +402,8 @@ class ObservationService:
             existing.is_revised = True
             existing.is_provisional = obj_in.is_provisional
             existing.revision_number += 1
+            if obj_in.yoy_change is not None:
+                existing.yoy_change = obj_in.yoy_change
             if obj_in.units:
                 existing.units = obj_in.units
             if obj_in.metadata_json:
